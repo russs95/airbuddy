@@ -31,14 +31,15 @@ airBuddy is designed to be:
 
 | Component | Description |
 |--------|-------------|
-| 🧠 **Raspberry Pi Zero 2 W** | Core computer |
-| 💾 **MicroSD Card (≥8GB)** | Raspberry Pi OS Lite (Bookworm) |
-| 🔋 **5V Power Source** | USB power bank or regulated 5V |
-| 🌫 **ENS160 + AHT21 Sensor Board** | Measures eCO₂, TVOC, temperature & humidity |
-| 🖥 **0.96" SSD1306 OLED (I²C)** | 128×64 pixel display |
-| 🔘 **Momentary Push Button** | Triggers an air quality test |
-| 🔌 **Jumper Wires** | Male–female & male–male |
-| 🪛 **Breadboard (optional)** | For prototyping |
+| 🧠 **Raspberry Pi Zero 2 W** | Core computer - Make sure you buy the version with the pin hat preinstalled! |
+| 💾 **MicroSD Card (≥8GB)** | 8GB is more than enough to install Raspberry Pi OS 6 bit |
+| 🔋 **5V Power Source** | USB power bank or a direct USB plug connection |
+ 🔌 **Micro USB cable(s)** | The Pi Zero has only two micro-usb ports. You'll need at least one to connect to your power source |
+| 🌫 **ENS160 + AHT21 Sensor Board** | Measures eCO₂, TVOC, temperature & humidity - make sure the pin head is preinstalled! |
+| 🖥 **0.96" SSD1306 OLED (I²C)** | 128×64 pixel display - or bring your own and customize the code!|
+| 🔘 **Momentary Push Button** | A solid metal momentary push button - Triggers an air quality test |
+| 🔌 **Jumper Wires** | Get a code assortment of colors.  If your pin heads are pre-installed all you need is female-to-female cables |
+
 
 ---
 
