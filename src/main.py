@@ -35,7 +35,7 @@ def main():
         btn.wait_for_press()
         time.sleep(0.08)  # debounce cushion
 
-        spinner.spin(duration=6, label="Sampling air")
+        spinner.spin(duration=6)
 
         temp_c, eco2_ppm, tvoc_ppb, rating = fake_readings()
         oled.show_results(temp_c, eco2_ppm, tvoc_ppb, rating=rating)
