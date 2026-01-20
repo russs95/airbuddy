@@ -2,31 +2,37 @@ import time
 
 class Spinner:
     """
-    OLED progress-bar spinner.
+    Centered breathing-ring spinner for OLED.
     """
-    def __init__(self, oled, width=10, interval=0.12):
+
+    def __init__(self, oled, interval=0.15):
         self.oled = oled
-        self.width = width
         self.interval = interval
 
-    def spin(self, duration=3, label="Reading..."):
-        end = time.time() + duration
-        direction = 1
-        pos = 0
+        # Frames grow and shrink symmetrically
+        self.frames = [
+            "  ░░░░  ",
+            " ░░░░░░ ",
+            "░░░░░░░░",
+            "████████",
+            "░░░░░░░░",
+            " ░░░░░░ ",
+        ]
 
-        while time.time() < end:
-            bar = "█" * pos + "░" * (self.width - pos)
+    def spin(self, duration=6, label="Reading air…"):
+        end_time = time.time() + duration
+        i = 0
+
+        # Draw label once (top), spinner centered vertically
+        while time.time() < end_time:
+            frame = self.frames[i]
+
             self.oled.text([
-                label,
-                f"[{bar}]"
+                "",                # line 0 (padding)
+                label.center(16),  # line 1
+                "",                # line 2
+                frame.center(16),  # line 3 (center)
             ])
 
-            pos += direction
-            if pos >= self.width:
-                pos = self.width
-                direction = -1
-            elif pos <= 0:
-                pos = 0
-                direction = 1
-
+            i = (i + 1) % len(self.frames)
             time.sleep(self.interval)
