@@ -3,47 +3,44 @@ import time
 
 class Spinner:
     """
-    2D breathing spinner (horizontal + vertical).
-    Uses solid block '█' with DejaVu mono font on OLED.
+    Center-to-full-width breathing bar.
+    Horizontal expansion is the main motion.
+    Vertical pulse is subtle via a thickness effect at peak.
     """
 
-    def __init__(self, oled, interval=0.20, width=10):
+    def __init__(self, oled, interval=0.12):
         self.oled = oled
         self.interval = interval
-        self.width = width
 
-        # Horizontal expansion steps (how many blocks are "filled")
-        # 2..width..2 creates the breathing rhythm
-        up = list(range(2, self.width + 1))
-        down = list(range(self.width - 1, 1, -1))
-        self.h_steps = up + down
+        # Build frames from narrow to wide to narrow.
+        # Use a fixed total width so centering is stable.
+        self.total_chars = 16  # fits well at font size ~22 on 128px wide OLED
+        self.min_bar = 2
+        self.max_bar = 16
 
-        # Vertical "thickness" steps (number of rows)
-        # 1 -> 3 -> 5 -> 3 -> 1 (fits 64px height with spacing)
-        self.v_steps = [1, 3, 5, 3, 1]
+        widths_up = list(range(self.min_bar, self.max_bar + 1, 2))
+        widths_down = list(range(self.max_bar - 2, self.min_bar - 1, -2))
+        widths = widths_up + widths_down
 
-    def _make_frame(self, blocks, rows):
-        # Centered bar string, fixed width so it doesn't jitter
-        filled = "█" * blocks
-        empty = " " * (self.width - blocks)
-        bar = filled + empty
+        frames = []
+        for w in widths:
+            pad = (self.total_chars - w) // 2
+            text = (" " * pad) + ("█" * w) + (" " * pad)
+            # ensure constant length to avoid jitter
+            text = text.ljust(self.total_chars)
 
-        # Build multi-line (vertical breathing)
-        return [bar for _ in range(rows)]
+            # subtle vertical pulse only near the widest point
+            thick = (w >= self.max_bar - 2)
+            frames.append({"text": text, "thick": thick})
+
+        self.frames = frames
 
     def spin(self, duration=6):
-        end = time.time() + duration
-        hi = 0
-        vi = 0
+        end_time = time.time() + duration
+        i = 0
+        n = len(self.frames)
 
-        while time.time() < end:
-            blocks = self.h_steps[hi]
-            rows = self.v_steps[vi]
-
-            frame = self._make_frame(blocks, rows)
-            self.oled.show_spinner_frame(frame)
-
-            hi = (hi + 1) % len(self.h_steps)
-            vi = (vi + 1) % len(self.v_steps)
-
+        while time.time() < end_time:
+            self.oled.show_spinner_frame(self.frames[i])
+            i = (i + 1) % n
             time.sleep(self.interval)
