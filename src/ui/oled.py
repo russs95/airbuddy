@@ -82,29 +82,31 @@ class OLED:
 
     def show_spinner_frame(self, frame):
         """
-        Spinner-only frame centered on screen.
+        Spinner-only frame.
         `frame` can be:
-          - a single string
-          - a list/tuple of strings (multi-line for vertical breathing)
+          - a string (single line)
+          - a list of strings (multiple lines)
+        Uses the dedicated spinner font (DejaVu) for reliable glyphs.
         """
         self.draw.rectangle((0, 0, self.width, self.height), outline=0, fill=0)
 
-        if isinstance(frame, (list, tuple)):
-            lines = list(frame)
+        if isinstance(frame, str):
+            lines = [frame]
         else:
-            lines = [str(frame)]
+            lines = list(frame)
 
-        # vertical centering based on number of lines
-        line_h = 24  # tuned for font size ~22 on SSD1306
+        # Center the block vertically based on number of lines
+        line_h = 22  # approx for font size ~22
         total_h = line_h * len(lines)
-        y0 = (self.height - total_h) // 2
+        y = max(0, (self.height - total_h) // 2)
 
-        for idx, line in enumerate(lines):
-            y = y0 + idx * line_h
+        for line in lines:
             self.draw_centered(line, y, self.font_spinner)
+            y += line_h
 
         self.oled.image(self.image)
         self.oled.show()
+
 
 
 
