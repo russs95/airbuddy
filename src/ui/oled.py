@@ -80,13 +80,13 @@ class OLED:
         self.oled.image(self.image)
         self.oled.show()
 
-        def show_spinner_frame(self, frame):
-            """
-            Spinner-only frame centered on screen.
-            `frame` can be:
-              - a single string
-              - a list/tuple of strings (multi-line for vertical breathing)
-            """
+    def show_spinner_frame(self, frame):
+        """
+        Spinner-only frame centered on screen.
+        `frame` can be:
+          - a single string
+          - a list/tuple of strings (multi-line for vertical breathing)
+        """
         self.draw.rectangle((0, 0, self.width, self.height), outline=0, fill=0)
 
         if isinstance(frame, (list, tuple)):
