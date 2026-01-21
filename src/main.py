@@ -29,6 +29,7 @@ def fake_readings():
 
 def main():
     oled = OLED()
+    oled.show_waiting("airBuddy is booting")  # <-- add this line
     spinner = Spinner(oled)
     btn = AirBuddyButton(gpio_pin=17)
 

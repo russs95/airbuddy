@@ -1,0 +1,18 @@
+[Unit]
+Description=AirBuddy air quality monitor
+After=network.target
+
+[Service]
+Type=simple
+User=airbuddy
+WorkingDirectory=/home/airbuddy/airbuddy_v1
+ExecStart=/home/airbuddy/airbuddy_v1/scripts/run_airbuddy.sh
+Restart=on-failure
+RestartSec=2
+
+# Helpful logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
