@@ -2,6 +2,8 @@ import board
 import busio
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
+from ui.headless import HeadlessDisplay
+
 
 
 class OLED:
@@ -222,5 +224,21 @@ class OLED:
 
         self.oled.image(self.image)
         self.oled.show()
+
+    @classmethod
+    def try_create(cls):
+        """
+        Create a real OLED if present; otherwise return HeadlessDisplay.
+        """
+        try:
+            return cls()
+        except OSError as e:
+            # Typical when OLED not attached: Remote I/O error / Input/output error
+            print(f"[OLED] Not detected, running headless. ({e})", flush=True)
+            return HeadlessDisplay()
+        except Exception as e:
+            print(f"[OLED] Failed to init OLED, running headless. ({e})", flush=True)
+            return HeadlessDisplay()
+
 
 

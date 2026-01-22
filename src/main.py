@@ -8,10 +8,14 @@ from sensors.air import AirSensor
 
 
 def main():
-    oled = OLED()
+    oled = OLED.try_create()
 
-    # Boot loader screen (title + progress bar)
-    Booter(oled).show(duration=2.5, fps=12)
+    # Boot loader only makes sense on a real display
+    if oled.__class__.__name__ != "HeadlessDisplay":
+        Booter(oled).show(duration=2.5, fps=12)
+    else:
+        print("[BOOT] airBuddy starting (headless)", flush=True)
+
 
     spinner = Spinner(oled)
     btn = AirBuddyButton(gpio_pin=17)
