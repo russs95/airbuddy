@@ -115,7 +115,7 @@ class OLED:
         bbox = self.draw.textbbox((0, 0), text, font=font)
         return bbox[3] - bbox[1]
 
-    # ---------- Screens ------------
+    # ---------- Screens -------------
 
     def show_waiting(self, line="Know your air."):
         self.draw.rectangle((0, 0, self.width, self.height), outline=0, fill=0)
