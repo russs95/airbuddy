@@ -144,15 +144,21 @@ class OLED:
             text = str(frame)
 
         text_h = self._text_height(text, self.font_spinner)
-        y = max(0, (self.height - text_h) // 2)
-
-        self.draw_centered(text, y, self.font_spinner)
+        y = (self.height - text_h) // 2  # center baseline for the spinner
 
         if thick:
-            self.draw_centered(text, y + 2, self.font_spinner)
+            # 3-line "thick" pulse centered vertically (up, middle, down)
+            line_gap = 2  # px between duplicate draws (tweak this if needed)
+
+            self.draw_centered(text, max(0, y - line_gap), self.font_spinner)
+            self.draw_centered(text, y, self.font_spinner)
+            self.draw_centered(text, min(self.height - text_h, y + line_gap), self.font_spinner)
+        else:
+            self.draw_centered(text, max(0, y), self.font_spinner)
 
         self.oled.image(self.image)
         self.oled.show()
+
 
     def show_metric(self, heading: str, value: str, tag: str = "just now"):
         """
