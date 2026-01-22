@@ -177,7 +177,7 @@ class OLED:
         y_value = max(0, (self.height - value_h) // 2 + 2)
         self.draw_centered(value, y_value, self.font_title)
 
-        # Tag
+        # Tag please
         self._draw_tag_bottom_right(tag)
 
         self.oled.image(self.image)
