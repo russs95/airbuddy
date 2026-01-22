@@ -6,8 +6,8 @@ import os
 import time
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Optional, Tuple
+from datetime import datetime
+from typing import Optional
 
 
 @dataclass
@@ -32,6 +32,11 @@ class AirSensor:
       - Logging to CSV
       - Scheduled background logging every 10 minutes (with 30s warmup)
       - Fallback to last logged reading if sensor read fails
+
+    Additions:
+      - pause_periodic_logging(): pause scheduler ASAP (button takes priority)
+      - resume_periodic_logging(): resume scheduler
+      - Scheduler warmup is interruptible (checks pause/stop frequently)
     """
 
     def __init__(
@@ -58,6 +63,7 @@ class AirSensor:
         # Scheduler thread control
         self._scheduler_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
+        self._pause_event = threading.Event()  # when set, scheduler pauses ASAP
 
         # Ensure logs path exists
         os.makedirs(self.log_dir, exist_ok=True)
@@ -83,7 +89,6 @@ class AirSensor:
             # Create bus fresh each time we init (helps after transient errors)
             self._i2c = busio.I2C(board.SCL, board.SDA)
 
-            # IMPORTANT: If bus is busy, busio may block; keep it simple.
             self._ens = adafruit_ens160.ENS160(self._i2c)
             self._aht = adafruit_ahtx0.AHTx0(self._i2c)
 
@@ -132,7 +137,16 @@ class AirSensor:
     def _append_log(self, r: AirReading) -> None:
         with open(self.log_path, "a", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            w.writerow([r.timestamp_iso, f"{r.temp_c:.2f}", f"{r.humidity:.2f}", r.eco2_ppm, r.tvoc_ppb, r.aqi, r.rating, r.source])
+            w.writerow([
+                r.timestamp_iso,
+                f"{r.temp_c:.2f}",
+                f"{r.humidity:.2f}",
+                r.eco2_ppm,
+                r.tvoc_ppb,
+                r.aqi,
+                r.rating,
+                r.source
+            ])
 
     def get_last_logged(self) -> Optional[AirReading]:
         """
@@ -144,8 +158,7 @@ class AirSensor:
         try:
             with open(self.log_path, "r", newline="", encoding="utf-8") as f:
                 rows = list(csv.reader(f))
-                # rows[0] is header; last data row is at end
-                for row in reversed(rows[1:]):
+                for row in reversed(rows[1:]):  # skip header
                     if not row or len(row) < 8:
                         continue
                     ts, temp_c, hum, eco2, tvoc, aqi, rating, source = row[:8]
@@ -161,6 +174,8 @@ class AirSensor:
                     )
         except Exception:
             return None
+
+        return None
 
     # ----------------------------
     # TIME / TIMESTAMP
@@ -186,7 +201,6 @@ class AirSensor:
         humidity = float(self._aht.relative_humidity)
 
         # Apply compensation to ENS160 if the library supports it
-        # (Different library versions expose different APIs)
         try:
             if hasattr(self._ens, "temperature_compensation"):
                 self._ens.temperature_compensation = temp_c
@@ -195,8 +209,7 @@ class AirSensor:
             if hasattr(self._ens, "set_environment"):
                 self._ens.set_environment(temp_c, humidity)
         except Exception:
-            # Compensation is nice-to-have; don't fail reads if it errors
-            pass
+            pass  # don't fail read if compensation fails
 
         # Read ENS160 outputs
         eco2_ppm = int(self._ens.eCO2)
@@ -229,7 +242,7 @@ class AirSensor:
 
             # Warmup (blocking)
             if warmup_seconds > 0:
-                time.sleep(warmup_seconds)
+                time.sleep(float(warmup_seconds))
 
             try:
                 r = self._read_once(source=source)
@@ -248,9 +261,7 @@ class AirSensor:
                     # Fallback to last logged value (if any)
                     last = self.get_last_logged()
                     if last is None:
-                        # If nothing logged yet, raise a clear error
                         raise RuntimeError("Sensor read failed and no fallback record exists")
-                    # Mark fallback source + timestamp now (so UI can show current time)
                     return AirReading(
                         timestamp_iso=self._now_iso_local(),
                         temp_c=last.temp_c,
@@ -288,7 +299,6 @@ class AirSensor:
         """
         with self._lock:
             source = self._warmup_source or "button"
-            # If warmup wasn't finished yet, do not block here; caller controls timing
             if self._warmup_until is not None and time.time() < self._warmup_until:
                 raise RuntimeError("Warmup not complete yet")
 
@@ -296,8 +306,23 @@ class AirSensor:
             self._warmup_until = None
             self._warmup_source = None
 
-        # Use blocking sample with warmup_seconds=0 (we already waited externally)
         return self.sample_blocking(warmup_seconds=0, source=source, log=log)
+
+    # ----------------------------
+    # SCHEDULED LOGGING CONTROL
+    # ----------------------------
+    def pause_periodic_logging(self) -> None:
+        """
+        Pause scheduled background logging ASAP.
+        Used so a button press can take priority immediately.
+        """
+        self._pause_event.set()
+
+    def resume_periodic_logging(self) -> None:
+        """
+        Resume scheduled background logging.
+        """
+        self._pause_event.clear()
 
     # ----------------------------
     # SCHEDULED LOGGING (EVERY 10 MIN, 30s WARMUP)
@@ -306,6 +331,8 @@ class AirSensor:
         """
         Start a background thread that logs air readings every `interval_seconds`
         with `warmup_seconds` warmup per scheduled read.
+
+        Scheduler warmup is interruptible so pause_periodic_logging() can stop it immediately.
         """
         if self._scheduler_thread and self._scheduler_thread.is_alive():
             return  # already running
@@ -313,24 +340,53 @@ class AirSensor:
         self._stop_event.clear()
 
         def _runner():
-            # Align to interval boundaries (optional but nice)
             next_time = time.time()
-            while not self._stop_event.is_set():
-                now = time.time()
-                if now >= next_time:
-                    # Do scheduled sample + log; fall back if needed
-                    try:
-                        self.sample_blocking(warmup_seconds=warmup_seconds, source="scheduled", log=True)
-                    except Exception:
-                        # If absolutely nothing exists to fall back to, ignore and keep going
-                        pass
-                    next_time = now + interval_seconds
-                time.sleep(0.5)
 
-        self._scheduler_thread = threading.Thread(target=_runner, name="airbuddy-scheduler", daemon=True)
+            while not self._stop_event.is_set():
+                # If paused, do nothing (but remain alive)
+                if self._pause_event.is_set():
+                    time.sleep(0.1)
+                    continue
+
+                now = time.time()
+
+                if now >= next_time:
+                    # Interruptible warmup so pause can stop it immediately
+                    warmup_left = float(warmup_seconds)
+
+                    while warmup_left > 0 and not self._stop_event.is_set():
+                        # Pause check during warmup
+                        if self._pause_event.is_set():
+                            # abandon this cycle and retry soon
+                            break
+                        step = min(0.2, warmup_left)
+                        time.sleep(step)
+                        warmup_left -= step
+
+                    # If paused during warmup (or stopping), skip scheduled read attempt
+                    if self._pause_event.is_set() or self._stop_event.is_set():
+                        next_time = time.time() + 1.0  # retry soon
+                        continue
+
+                    # Do scheduled sample + log (warmup already done above)
+                    try:
+                        self.sample_blocking(warmup_seconds=0, source="scheduled", log=True)
+                    except Exception:
+                        pass
+
+                    next_time = time.time() + int(interval_seconds)
+
+                time.sleep(0.2)
+
+        self._scheduler_thread = threading.Thread(
+            target=_runner,
+            name="airbuddy-scheduler",
+            daemon=True
+        )
         self._scheduler_thread.start()
 
     def stop_periodic_logging(self) -> None:
         self._stop_event.set()
+        self._pause_event.clear()  # recommended: reset pause state too
         if self._scheduler_thread and self._scheduler_thread.is_alive():
             self._scheduler_thread.join(timeout=2.0)
