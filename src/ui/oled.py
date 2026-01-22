@@ -52,7 +52,7 @@ class OLED:
         self.oled.fill(0)
         self.oled.show()
 
-    # ---------- helpers ----------
+    # ---------- Helpers ----------
 
     def clear(self):
         self.draw.rectangle((0, 0, self.width, self.height), outline=0, fill=0)
