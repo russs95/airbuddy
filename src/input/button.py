@@ -4,36 +4,54 @@ from gpiozero import Button
 
 
 class AirBuddyButton:
-    def __init__(self, gpio_pin=17, double_click_window_s=1.0):
-        # pull_up=True means button to GND; pressed = LOW
+    def __init__(self, gpio_pin=17, click_window_s=1.0):
+        """
+        click_window_s:
+            Total time window after first press to collect
+            additional clicks (2nd, 3rd).
+        """
         self.button = Button(gpio_pin, pull_up=True, bounce_time=0.05)
-        self.double_click_window_s = float(double_click_window_s)
+        self.click_window_s = float(click_window_s)
 
     def wait_for_action(self):
         """
         Blocking call.
+
         Returns:
-            "single" or "double"
+            "single"
+            "double"
+            "triple"
+
         Behavior:
             - Wait for first press
-            - Then wait up to `double_click_window_s` for a second press
-            - If second press happens in the window => double
-            - Otherwise => single
+            - Open a 1s window
+            - Count how many presses occur
         """
-        # First press
-        self.button.wait_for_press()
+        click_count = 0
 
-        # Optional: wait for release so a long hold doesn't confuse detection
+        # --- First press (blocking) ---
+        self.button.wait_for_press()
         self.button.wait_for_release()
+        click_count = 1
 
         start = time.monotonic()
 
-        # Look for second press within the window
-        while (time.monotonic() - start) < self.double_click_window_s:
+        # --- Collect additional presses ---
+        while (time.monotonic() - start) < self.click_window_s:
             if self.button.is_pressed:
-                # second press detected
                 self.button.wait_for_release()
-                return "double"
-            time.sleep(0.01)  # light poll
+                click_count += 1
 
-        return "single"
+                # Cap at 3 (we don't care beyond triple)
+                if click_count >= 3:
+                    return "triple"
+
+            time.sleep(0.01)
+
+        # --- Decide action ---
+        if click_count == 1:
+            return "single"
+        elif click_count == 2:
+            return "double"
+        else:
+            return "triple"

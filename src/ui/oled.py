@@ -206,6 +206,65 @@ class OLED:
         self.oled.image(self.image)
         self.oled.show()
 
+    def show_cached(self, reading, log_count: int):
+        """
+        Show last cached air reading in a compact two-column layout.
+        Uses font_small everywhere.
+        """
+        self.clear()
+        font = self.font_small
+        line_h = self._text_height("Ag", font) + 2
+
+        x_left = 2
+        x_right_margin = self.width - 2
+
+        y = 4
+
+        def draw_left(text):
+            self.draw.text((x_left, y), text, font=font, fill=255)
+
+        def draw_right(text):
+            bbox = self.draw.textbbox((0, 0), text, font=font)
+            w = bbox[2] - bbox[0]
+            self.draw.text((x_right_margin - w, y), text, font=font, fill=255)
+
+        # --- Row 1 ---
+        draw_left(f"Temp: {reading.temp_c:.1f} °C")
+        draw_right(f"Hum: {reading.humidity:.1f} %")
+        y += line_h
+
+        # --- Row 2 ---
+        draw_left(f"CO2: {reading.eco2_ppm} ppm")
+        draw_right(f"TVOC: {reading.tvoc_ppb} ppb")
+        y += line_h
+
+        # --- Row 3 ---
+        draw_left(f"Air index: {reading.aqi}")
+        draw_right(f"Log no. {log_count}")
+        y += line_h
+
+        # --- Row 4 (cached time) ---
+        try:
+            # Extract local time only (HH:MMam/pm)
+            t = reading.timestamp_iso
+            time_part = t.split("T")[1][:5]
+        except Exception:
+            time_part = "--:--"
+
+        draw_left("Cached:")
+        draw_right(time_part)
+
+        self.oled.image(self.image)
+        self.oled.show()
+
+    def get_log_count(self) -> int:
+        if not os.path.exists(self.log_path):
+            return 0
+        try:
+            with open(self.log_path, "r", encoding="utf-8") as f:
+                return max(0, sum(1 for _ in f) - 1)  # minus header
+        except Exception:
+            return 0
 
 
     def show_metric(self, heading: str, value: str, tag: str = "just now"):

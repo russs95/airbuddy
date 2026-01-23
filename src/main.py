@@ -72,7 +72,17 @@ def main():
             oled.clear()
             continue
 
-        # ----------------------------
+        if action == "triple":
+            last = air.get_last_logged()
+            if last:
+                log_count = air.get_log_count()
+                oled.show_cached(last, log_count)
+                time.sleep(5)
+            oled.clear()
+            continue
+
+
+    # ----------------------------
         # SAMPLING (single click)
         # Button preempts background logging
         # ----------------------------
