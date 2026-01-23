@@ -73,7 +73,7 @@ class Booter:
         left_margin = 10
         right_margin = 10
         usable_w = w - left_margin - right_margin
-        blocks_total = max(10, usable_w // max(1, bw))+3
+        blocks_total = max(10, usable_w // max(1, bw))
 
         bar_str_empty = (space_char * blocks_total)
         bar_text_w = blocks_total * bw

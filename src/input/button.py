@@ -7,8 +7,9 @@ class AirBuddyButton:
     def __init__(self, gpio_pin=17, click_window_s=1.0):
         """
         click_window_s:
-            Total time window after first press to collect
-            additional clicks (2nd, 3rd).
+            Total time window after first press to collect extra clicks.
+            Example: 1.0 means:
+              - after the first click, we wait up to 1 second for 2nd/3rd clicks
         """
         self.button = Button(gpio_pin, pull_up=True, bounce_time=0.05)
         self.click_window_s = float(click_window_s)
@@ -18,40 +19,37 @@ class AirBuddyButton:
         Blocking call.
 
         Returns:
-            "single"
-            "double"
-            "triple"
+            "single", "double", or "triple"
 
         Behavior:
-            - Wait for first press
-            - Open a 1s window
-            - Count how many presses occur
+            - Wait for first press (blocking)
+            - Then open a window (click_window_s) to capture additional presses
+            - Count press *events* (edges), not "is_pressed" level
         """
-        click_count = 0
-
-        # --- First press (blocking) ---
+        # --- First click (blocking) ---
         self.button.wait_for_press()
         self.button.wait_for_release()
         click_count = 1
 
         start = time.monotonic()
 
-        # --- Collect additional presses ---
-        while (time.monotonic() - start) < self.click_window_s:
-            if self.button.is_pressed:
-                self.button.wait_for_release()
-                click_count += 1
+        # --- Collect 2nd/3rd clicks within the window ---
+        while click_count < 3:
+            remaining = self.click_window_s - (time.monotonic() - start)
+            if remaining <= 0:
+                break
 
-                # Cap at 3 (we don't care beyond triple)
-                if click_count >= 3:
-                    return "triple"
+            # Wait for the next press event (edge) within the remaining time
+            pressed = self.button.wait_for_press(timeout=remaining)
+            if not pressed:
+                break  # window expired, no more clicks
 
-            time.sleep(0.01)
+            # Count it, then wait for release to avoid counting a hold as extra clicks
+            self.button.wait_for_release()
+            click_count += 1
 
-        # --- Decide action ---
         if click_count == 1:
             return "single"
-        elif click_count == 2:
+        if click_count == 2:
             return "double"
-        else:
-            return "triple"
+        return "triple"
