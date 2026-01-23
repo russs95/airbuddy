@@ -254,7 +254,7 @@ class OLED:
 
         # --- Row 2 ---
         draw_left(f"Temp: {reading.temp_c:.1f} °C")
-        draw_right(f"Air Index: {reading.aqi}")
+        draw_right(f"Index: {reading.aqi}")
         y += line_h
 
         # --- Row 3 ---
@@ -409,39 +409,39 @@ class OLED:
 
     from typing import Optional  # <-- add near top of file
 
-def show_settings(self, time_str: str, ip: str | None, power_tag: str):
+    def show_settings(self, time_str: str, ip: str | None, power_tag: str):
 
-    """
-    Settings screen:
-      - Time (large)
-      - IP address or 'No connection'
-      - Power tag bottom-right  kjlkjlkj
-    """
-    self.clear()
-
-    self.draw_centered(time_str, 4, self.font_title)
-
-    ip_text = ip if ip else "No connection"
-    self.draw_centered(ip_text, 30, self.font_medium)
-
-    self._draw_tag_bottom_right(power_tag)
-
-    self.oled.image(self.image)
-    self.oled.show()
-
-
-
-    @classmethod
-    def try_create(cls):
         """
-        Create a real OLED if present; otherwise return HeadlessDisplay.
+        Settings screen:
+          - Time (large)
+          - IP address or 'No connection'
+          - Power tag bottom-right  kjlkjlkj
         """
-        try:
-            return cls()
-        except OSError as e:
-            print(f"[OLED] Not detected, running headless. ({e})", flush=True)
-            return HeadlessDisplay()
-        except Exception as e:
-            print(f"[OLED] Failed to init OLED, running headless. ({e})", flush=True)
-            return HeadlessDisplay()
+        self.clear()
+
+        self.draw_centered(time_str, 4, self.font_title)
+
+        ip_text = ip if ip else "No connection"
+        self.draw_centered(ip_text, 30, self.font_medium)
+
+        self._draw_tag_bottom_right(power_tag)
+
+        self.oled.image(self.image)
+        self.oled.show()
+
+
+
+        @classmethod
+        def try_create(cls):
+            """
+            Create a real OLED if present; otherwise return HeadlessDisplay.
+            """
+            try:
+                return cls()
+            except OSError as e:
+                print(f"[OLED] Not detected, running headless. ({e})", flush=True)
+                return HeadlessDisplay()
+            except Exception as e:
+                print(f"[OLED] Failed to init OLED, running headless. ({e})", flush=True)
+                return HeadlessDisplay()
 
