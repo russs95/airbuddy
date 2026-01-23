@@ -215,7 +215,7 @@ class OLED:
           Cached 14:35          Log: 234
           Temp: 32.2 °C     Air Index: 1
           CO2: 553            TVOC: 102
-          Humidity: 77%
+          Humidity: 77999%
         """
         self.clear()
         font = self.font_small
