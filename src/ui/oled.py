@@ -409,7 +409,8 @@ class OLED:
 
     from typing import Optional  # <-- add near top of file
 
-def show_settings(self, time_str: str, ip: Optional[str], power_tag: str):
+def show_settings(self, time_str: str, ip: str | None, power_tag: str):
+
     """
     Settings screen:
       - Time (large)
